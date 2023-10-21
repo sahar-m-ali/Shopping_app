@@ -1,0 +1,36 @@
+# WordPress
+# Use the specified base image
+FROM wordpress:latest
+
+# Enable Apache module for URL rewriting
+RUN a2enmod rewrite
+
+# Update the package repositories and install necessary packages
+RUN apt-get update && apt-get install -y libgraphicsmagick1-dev graphicsmagick
+
+# Install and enable APCu PHP extension
+RUN pecl install apcu && docker-php-ext-enable apcu
+
+# Install GraphicsMagick and then install and enable the Gmagick PHP extension
+RUN apt-get update && apt-get install -y libgraphicsmagick1-dev graphicsmagick && \
+    pecl install gmagick-beta && docker-php-ext-enable gmagick
+
+# Clean up temporary files
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Copy rootfs into the root directory
+COPY wordpress/rootfs /
+
+# Setup WordPress themes using WP-CLI
+RUN mv /wp-themes-setup.sh /bin/wp-themes-setup && chmod +x /bin/wp-themes-setup && \
+    curl -o /bin/wp-cli.phar https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && \
+    mv /bin/wp-cli.phar /bin/wp && chmod +x /bin/wp
+
+# Configure PHP upload file size limits
+RUN { \
+        echo "upload_max_filesize = 25M"; \
+        echo "post_max_size = 50M"; \
+    } > /usr/local/etc/php/conf.d/uploads.ini
+
+# Clean up temporary files
+RUN rm -rf /tmp/* /var/tmp/*
